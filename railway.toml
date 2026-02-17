@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp & sleep 1 && export DISPLAY=:99 && python main.py"
+startCommand = "/app/entrypoint.sh"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
