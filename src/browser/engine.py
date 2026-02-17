@@ -19,7 +19,7 @@ from playwright.async_api import (
     Playwright,
     async_playwright,
 )
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 
 from src.utils.human_timing import (
     between_actions,
@@ -98,18 +98,15 @@ class BrowserEngine:
             accept_downloads=True,
         )
 
+        # Apply stealth patches to the entire context (covers all pages).
+        stealth = Stealth()
+        await stealth.apply_stealth_async(self._context)
+
         # Grab the first page (Chromium opens one automatically) or create one.
         if self._context.pages:
             self._page = self._context.pages[0]
         else:
             self._page = await self._context.new_page()
-
-        # Apply stealth patches to every page created by this context.
-        await stealth_async(self._page)
-        self._context.on(
-            "page",
-            lambda p: asyncio.ensure_future(stealth_async(p)),
-        )
 
         log.info(
             "browser_started",
@@ -160,7 +157,6 @@ class BrowserEngine:
 
         if self._page is None or self._page.is_closed():
             self._page = await self._context.new_page()
-            await stealth_async(self._page)
             log.debug("new_page_created")
 
         return self._page

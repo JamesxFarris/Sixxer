@@ -56,21 +56,21 @@ gigs:
     packages:
       basic:
         name: "Simple Script"
-        price: 15
+        price: 25
         description: "A simple Python script for a single task with basic documentation"
         complexity: "simple"
         delivery_days: 2
         revisions: 1
       standard:
         name: "Moderate Tool"
-        price: 40
+        price: 65
         description: "A moderate Python tool with multiple features and full documentation"
         complexity: "moderate"
         delivery_days: 4
         revisions: 2
       premium:
         name: "Complex Automation"
-        price: 80
+        price: 150
         description: "A complex automation system with advanced features, tests, and full documentation"
         complexity: "complex"
         delivery_days: 7
