@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install Firefox system dependencies + Xvfb for virtual display
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
+    xauth \
     libnss3 \
     libnspr4 \
     libgbm1 \
