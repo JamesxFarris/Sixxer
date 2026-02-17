@@ -134,6 +134,7 @@ async def main(headless: bool = False) -> None:
         port=settings.port,
         scheduler=scheduler,
         db=db,
+        engine=engine,
     )
     await health_server.start()
     log.info("sixxer.health_check_started", port=settings.port)

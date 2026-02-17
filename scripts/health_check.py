@@ -3,9 +3,12 @@
 Railway expects a listening HTTP port to confirm the service is alive.
 This module runs an ``asyncio``-based HTTP server that exposes:
 
-- ``GET /health`` -- JSON payload with uptime, cycle count, daily API cost,
-  and order counts by status.
-- ``GET /``       -- Redirect to ``/health``.
+- ``GET /health``            -- JSON payload with uptime, cycle count, daily
+  API cost, and order counts by status.
+- ``GET /``                  -- Redirect to ``/health``.
+- ``GET /debug/screenshot``  -- PNG screenshot of the current browser page.
+- ``GET /debug/html``        -- Raw HTML of the current browser page.
+- ``GET /debug/url``         -- JSON with the current page URL.
 
 Usage (standalone)::
 
@@ -25,6 +28,7 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from src.browser.engine import BrowserEngine
     from src.models.database import Database
     from src.orchestrator.scheduler import Scheduler
 
@@ -49,10 +53,12 @@ class HealthCheckServer:
         port: int = 8080,
         scheduler: Scheduler | None = None,
         db: Database | None = None,
+        engine: BrowserEngine | None = None,
     ) -> None:
         self._port = port
         self._scheduler = scheduler
         self._db = db
+        self._engine = engine
         self._server: asyncio.Server | None = None
 
     async def start(self) -> None:
@@ -93,6 +99,12 @@ class HealthCheckServer:
             if path in ("/health", "/"):
                 body = await self._build_health_payload()
                 response = self._json_response(HTTPStatus.OK, body)
+            elif path == "/debug/screenshot":
+                response = await self._handle_debug_screenshot()
+            elif path == "/debug/html":
+                response = await self._handle_debug_html()
+            elif path == "/debug/url":
+                response = await self._handle_debug_url()
             else:
                 response = self._json_response(
                     HTTPStatus.NOT_FOUND, {"error": "not found"}
@@ -158,6 +170,68 @@ class HealthCheckServer:
         return round(float(row["total"]), 4) if row else 0.0
 
     # ------------------------------------------------------------------
+    # Debug endpoints
+    # ------------------------------------------------------------------
+
+    async def _handle_debug_screenshot(self) -> bytes:
+        """Take a screenshot of the current browser page and return as PNG."""
+        if self._engine is None:
+            return self._json_response(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "browser engine not available"},
+            )
+        try:
+            page = await self._engine.get_page()
+            png_bytes = await page.screenshot(full_page=True)
+            return self._binary_response(
+                HTTPStatus.OK, png_bytes, "image/png"
+            )
+        except Exception as exc:
+            return self._json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": f"screenshot failed: {exc}"},
+            )
+
+    async def _handle_debug_html(self) -> bytes:
+        """Return the raw HTML of the current browser page."""
+        if self._engine is None:
+            return self._json_response(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "browser engine not available"},
+            )
+        try:
+            page = await self._engine.get_page()
+            html = await page.content()
+            html_bytes = html.encode("utf-8")
+            return self._binary_response(
+                HTTPStatus.OK, html_bytes, "text/html; charset=utf-8"
+            )
+        except Exception as exc:
+            return self._json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": f"html dump failed: {exc}"},
+            )
+
+    async def _handle_debug_url(self) -> bytes:
+        """Return the current page URL as JSON."""
+        if self._engine is None:
+            return self._json_response(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "browser engine not available"},
+            )
+        try:
+            page = await self._engine.get_page()
+            return self._json_response(
+                HTTPStatus.OK,
+                {"url": page.url, "title": await page.title()},
+            )
+        except Exception as exc:
+            return self._json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": f"url check failed: {exc}"},
+            )
+
+    # ------------------------------------------------------------------
     # HTTP helpers
     # ------------------------------------------------------------------
 
@@ -171,6 +245,18 @@ class HealthCheckServer:
             f"Connection: close\r\n"
             f"\r\n"
         ).encode("utf-8") + body_bytes
+
+    @staticmethod
+    def _binary_response(
+        status: HTTPStatus, body: bytes, content_type: str
+    ) -> bytes:
+        return (
+            f"HTTP/1.1 {status.value} {status.phrase}\r\n"
+            f"Content-Type: {content_type}\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            f"Connection: close\r\n"
+            f"\r\n"
+        ).encode("utf-8") + body
 
 
 async def _standalone_main() -> None:
