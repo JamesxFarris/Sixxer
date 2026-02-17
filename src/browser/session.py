@@ -23,6 +23,11 @@ _FIVERR_DASHBOARD_URL = "https://www.fiverr.com/seller_dashboard"
 _FIVERR_HOME_URL = "https://www.fiverr.com"
 
 
+class PerimeterXBlockedError(RuntimeError):
+    """Raised when PerimeterX bot detection blocks access to Fiverr."""
+    pass
+
+
 class SessionManager:
     """Manages Fiverr login state using a persistent browser profile.
 
@@ -77,8 +82,13 @@ class SessionManager:
                 continue
 
         # Fallback: check if the URL itself indicates we landed on a logged-in page
+        # BUT first verify PerimeterX isn't blocking us (URL can still contain
+        # "manage_orders" while showing the challenge page).
         current_url = page.url
         if "seller_dashboard" in current_url or "manage_orders" in current_url:
+            if await self._detect_perimeterx():
+                log.warning("session_url_ok_but_perimeterx_blocked")
+                return False
             log.info("session_active_by_url")
             return True
 
@@ -100,14 +110,28 @@ class SessionManager:
         """Guarantee that the browser has an active Fiverr session.
 
         If the session has expired or was never established, a full
-        login flow is executed.  Raises ``RuntimeError`` if login fails.
+        login flow is executed.  Raises ``PerimeterXBlockedError`` if
+        PerimeterX is blocking access, ``RuntimeError`` for other failures.
         """
+        # Check for PerimeterX before anything else
+        if await self._detect_perimeterx():
+            log.warning("ensure_session_perimeterx_blocked")
+            raise PerimeterXBlockedError(
+                "PerimeterX bot detection is blocking access. "
+                "Use /debug/solve-px or /debug/screenshot to resolve."
+            )
+
         if await self.is_logged_in():
             return
 
         log.info("session_expired_relogging")
         success = await self.login()
         if not success:
+            # Check again if PX appeared during login
+            if await self._detect_perimeterx():
+                raise PerimeterXBlockedError(
+                    "PerimeterX blocked during login attempt."
+                )
             raise RuntimeError("Failed to establish a Fiverr session.")
 
     # ------------------------------------------------------------------
@@ -258,8 +282,56 @@ class SessionManager:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    async def _detect_perimeterx(self) -> bool:
+        """Return ``True`` if PerimeterX (HUMAN Security) challenge is present."""
+        page = await self._engine.get_page()
+
+        # Check for the #px-captcha element (primary PX indicator)
+        try:
+            el = await page.wait_for_selector("#px-captcha", timeout=2_000)
+            if el is not None:
+                log.warning("perimeterx_captcha_detected")
+                return True
+        except Exception:
+            pass
+
+        # Check page title for "human" (PX shows "It needs a human touch")
+        try:
+            title = await page.title()
+            if title and "human" in title.lower():
+                log.warning("perimeterx_title_detected", title=title)
+                return True
+        except Exception:
+            pass
+
+        # Check for PX script markers
+        try:
+            px_present = await page.evaluate(
+                """() => {
+                    return !!(
+                        document.querySelector('#px-captcha') ||
+                        document.querySelector('#px-captcha-wrapper') ||
+                        document.querySelector('script[src*="perimeterx"]') ||
+                        document.querySelector('script[src*="/captcha/captcha.js"]') ||
+                        (window._pxVid !== undefined) ||
+                        (window._pxUuid !== undefined)
+                    );
+                }"""
+            )
+            if px_present:
+                log.warning("perimeterx_script_markers_detected")
+                return True
+        except Exception:
+            pass
+
+        return False
+
     async def _detect_security_check(self) -> bool:
         """Return ``True`` if a CAPTCHA / challenge iframe is present."""
+        # Check PerimeterX first (most common blocker on Fiverr)
+        if await self._detect_perimeterx():
+            return True
+
         page = await self._engine.get_page()
         captcha_selectors = self._selectors.get_all("login", "captcha_indicator")
         for selector in captcha_selectors:

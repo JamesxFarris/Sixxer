@@ -10,8 +10,8 @@ selectors:
       primary: "button[type='submit']"
       fallback: "button.btn-primary, form button:last-of-type"
     captcha_indicator:
-      primary: "iframe[src*='captcha'], iframe[src*='recaptcha']"
-      fallback: ".captcha-container, #captcha, [class*='captcha'], [id*='captcha']"
+      primary: "iframe[src*='captcha'], iframe[src*='recaptcha'], #px-captcha"
+      fallback: ".captcha-container, #captcha, [class*='captcha'], [id*='captcha'], #px-captcha-wrapper, iframe[src*='perimeterx']"
 
   dashboard:
     active_orders:

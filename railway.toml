@@ -8,5 +8,5 @@ healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 
-[[mounts]]
-mountPath = "/app/data"
+[deploy.mounts]
+"/app/data" = "sixxer_data"

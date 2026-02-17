@@ -28,7 +28,7 @@ from src.ai.communicator import BuyerCommunicator
 from src.ai.prompts import PromptManager
 from src.browser.engine import BrowserEngine
 from src.browser.selectors import SelectorStore
-from src.browser.session import SessionManager
+from src.browser.session import PerimeterXBlockedError, SessionManager
 from src.fiverr.inbox import InboxManager
 from src.fiverr.navigation import Navigator
 from src.fiverr.order_actions import OrderActions
@@ -57,6 +57,17 @@ async def main(headless: bool = False) -> None:
     setup_logging(settings.log_level)
     log.info("sixxer.starting", headless=headless)
 
+    # ---- Data directory verification -------------------------------------
+    data_dir = Path(settings.db_path).parent
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log.info(
+        "sixxer.data_dir_check",
+        data_dir=str(data_dir.resolve()),
+        exists=data_dir.exists(),
+        is_mount=Path("/app/data").is_mount() if Path("/app/data").exists() else False,
+        contents=str(list(data_dir.iterdir())) if data_dir.exists() else "N/A",
+    )
+
     # ---- Database --------------------------------------------------------
     db = Database(str(settings.abs_db_path))
     await db.connect()
@@ -71,8 +82,15 @@ async def main(headless: bool = False) -> None:
     selectors = SelectorStore(str(_PROJECT_ROOT / "config" / "selectors.yaml"))
     session = SessionManager(engine, settings.fiverr_username, settings.fiverr_password)
 
-    # Ensure we have a valid session before proceeding
-    await session.ensure_session()
+    # Try to ensure session, but don't crash on PerimeterX — the scheduler
+    # will handle it with pause-and-retry once it starts.
+    try:
+        await session.ensure_session()
+    except PerimeterXBlockedError:
+        log.warning(
+            "sixxer.perimeterx_at_startup",
+            message="PerimeterX detected at startup. Use /debug/solve-px to resolve.",
+        )
 
     # ---- Navigation & Fiverr ops -----------------------------------------
     navigator = Navigator(engine, selectors)
@@ -135,6 +153,8 @@ async def main(headless: bool = False) -> None:
         scheduler=scheduler,
         db=db,
         engine=engine,
+        selectors=selectors,
+        debug_token=settings.debug_token or None,
     )
     await health_server.start()
     log.info("sixxer.health_check_started", port=settings.port)

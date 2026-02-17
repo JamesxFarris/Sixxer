@@ -21,7 +21,7 @@ import json
 from datetime import datetime, timezone
 
 from src.ai.client import BudgetExceededError
-from src.browser.session import SessionManager
+from src.browser.session import PerimeterXBlockedError, SessionManager
 from src.fiverr.inbox import InboxManager
 from src.fiverr.order_actions import OrderActions
 from src.fiverr.order_monitor import OrderMonitor
@@ -83,6 +83,7 @@ class Scheduler:
         self._poll_max = poll_max
         self._running = False
         self._cycle_count = 0
+        self._captcha_paused = False
 
     # ------------------------------------------------------------------
     # Main loop
@@ -102,6 +103,16 @@ class Scheduler:
 
             try:
                 await self._run_cycle()
+                # Clear pause flag on successful cycle
+                if self._captcha_paused:
+                    self._captcha_paused = False
+                    log.info("scheduler.captcha_pause_cleared")
+            except PerimeterXBlockedError:
+                log.warning("scheduler.perimeterx_blocked_pausing")
+                self._captcha_paused = True
+                # Wait for operator to solve: check every 60s for up to 30 min
+                await self._wait_for_captcha_resolution()
+                continue
             except BudgetExceededError:
                 log.warning("scheduler.budget_exceeded_pausing")
                 # Sleep for an hour before checking again
@@ -166,6 +177,43 @@ class Scheduler:
         await self._send_pending_acknowledgments()
 
         log.info("scheduler.cycle_complete", cycle=self._cycle_count)
+
+    # ------------------------------------------------------------------
+    # PerimeterX pause
+    # ------------------------------------------------------------------
+
+    async def _wait_for_captcha_resolution(self) -> None:
+        """Poll every 60s for up to 30 min waiting for operator to solve CAPTCHA."""
+        max_wait = 30 * 60  # 30 minutes
+        poll_interval_secs = 60
+        elapsed = 0.0
+
+        while elapsed < max_wait and self._running:
+            log.info(
+                "scheduler.waiting_for_captcha_solve",
+                elapsed_min=round(elapsed / 60, 1),
+                max_min=max_wait // 60,
+            )
+            await asyncio.sleep(poll_interval_secs)
+            elapsed += poll_interval_secs
+
+            # Try to detect if PerimeterX is still present
+            try:
+                await self._session.ensure_session()
+                # If no exception, the challenge is resolved
+                self._captcha_paused = False
+                log.info("scheduler.captcha_resolved_resuming")
+                return
+            except PerimeterXBlockedError:
+                continue
+            except Exception:
+                # Other error (e.g. login failure) - keep waiting
+                continue
+
+        if self._captcha_paused:
+            log.error("scheduler.captcha_timeout_30min")
+            # Don't stop entirely - let the next cycle try again
+            self._captcha_paused = False
 
     # ------------------------------------------------------------------
     # Order handling

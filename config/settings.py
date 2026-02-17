@@ -40,6 +40,10 @@ class Settings(BaseSettings):
         default=8080,
         description="HTTP port for the health check server (set by Railway's $PORT)",
     )
+    debug_token: str = Field(
+        default="",
+        description="Optional auth token for /debug/* endpoints. If empty, debug endpoints are open.",
+    )
     db_path: str = Field(
         default="data/sixxer.db",
         description="Path to the SQLite database file",
