@@ -19,8 +19,6 @@ from playwright.async_api import (
     Playwright,
     async_playwright,
 )
-from playwright_stealth import Stealth
-
 from src.utils.human_timing import (
     between_actions,
     human_delay,
@@ -35,9 +33,8 @@ _SCREENSHOTS_DIR = Path("data/screenshots")
 
 # Realistic browser fingerprint constants
 _USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/122.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) "
+    "Gecko/20100101 Firefox/128.0"
 )
 _VIEWPORT = {"width": 1920, "height": 1080}
 _LOCALE = "en-US"
@@ -79,28 +76,21 @@ class BrowserEngine:
 
         self._playwright = await async_playwright().start()
 
-        self._context = await self._playwright.chromium.launch_persistent_context(
+        self._context = await self._playwright.firefox.launch_persistent_context(
             user_data_dir=str(self._data_dir),
             headless=self._headless,
             viewport=_VIEWPORT,
             user_agent=_USER_AGENT,
             locale=_LOCALE,
             timezone_id=_TIMEZONE,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-extensions",
-            ],
-            ignore_default_args=["--enable-automation"],
             java_script_enabled=True,
             accept_downloads=True,
+            firefox_user_prefs={
+                # Disable automation detection signals
+                "dom.webdriver.enabled": False,
+                "useragentoverride": _USER_AGENT,
+            },
         )
-
-        # Apply stealth patches to the entire context (covers all pages).
-        stealth = Stealth()
-        await stealth.apply_stealth_async(self._context)
 
         # Grab the first page (Chromium opens one automatically) or create one.
         if self._context.pages:

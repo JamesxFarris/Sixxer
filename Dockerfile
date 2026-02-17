@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Chromium system dependencies required by Playwright
+# Install Firefox system dependencies required by Playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 \
     libnspr4 \
@@ -42,8 +42,8 @@ RUN mkdir -p src config && \
     pip install --no-cache-dir . && \
     rm -rf src config
 
-# Install Playwright Chromium browser
-RUN playwright install chromium
+# Install Playwright Firefox browser (less detectable than Chromium)
+RUN playwright install firefox
 
 # Copy full application code and install the package
 COPY . .
