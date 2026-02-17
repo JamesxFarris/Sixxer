@@ -1,0 +1,122 @@
+selectors:
+  login:
+    username_input:
+      primary: "input#username"
+      fallback: "input[name='username'], input[type='email'][autocomplete='username']"
+    password_input:
+      primary: "input#password"
+      fallback: "input[name='password'], input[type='password']"
+    submit_button:
+      primary: "button[type='submit']"
+      fallback: "button.btn-primary, form button:last-of-type"
+    captcha_indicator:
+      primary: "iframe[src*='captcha'], iframe[src*='recaptcha']"
+      fallback: ".captcha-container, #captcha, [class*='captcha'], [id*='captcha']"
+
+  dashboard:
+    active_orders:
+      primary: "[data-testid='active-orders'], .active-orders-count"
+      fallback: ".dashboard-stat:nth-child(1) .stat-value, .orders-count"
+    earnings_total:
+      primary: "[data-testid='earnings'], .earnings-total"
+      fallback: ".dashboard-stat:nth-child(2) .stat-value, .total-earnings"
+    response_rate:
+      primary: "[data-testid='response-rate'], .response-rate"
+      fallback: ".dashboard-stat:nth-child(3) .stat-value, .seller-stats .response-rate"
+    new_messages_badge:
+      primary: "[data-testid='inbox-badge'], .inbox-notification-badge"
+      fallback: ".nav-link[href*='inbox'] .badge, .message-count, .notification-count"
+
+  inbox:
+    conversation_list:
+      primary: ".conversation-list, [data-testid='conversation-list']"
+      fallback: ".inbox-conversations, .messages-list, ul.conversations"
+    message_input:
+      primary: "textarea.message-input, [data-testid='message-input']"
+      fallback: "textarea[placeholder*='message'], .chat-input textarea, .message-composer textarea"
+    send_button:
+      primary: "button.send-button, [data-testid='send-message']"
+      fallback: "button[aria-label*='send'], .chat-send-btn, .message-composer button[type='submit']"
+    conversation_item:
+      primary: ".conversation-item, [data-testid='conversation-item']"
+      fallback: ".conversation-row, .inbox-item, li.conversation"
+    message_text:
+      primary: ".message-body, [data-testid='message-text']"
+      fallback: ".message-content p, .chat-message-text, .message-text"
+    attachment_button:
+      primary: "button.attachment-btn, [data-testid='attachment-button']"
+      fallback: "button[aria-label*='attach'], .upload-btn, input[type='file'] + button"
+
+  orders:
+    order_list:
+      primary: ".orders-list, [data-testid='orders-list']"
+      fallback: ".manage-orders-table, table.orders, .orders-container"
+    order_item:
+      primary: ".order-row, [data-testid='order-item']"
+      fallback: "tr.order-item, .order-card, .order-entry"
+    order_status:
+      primary: ".order-status, [data-testid='order-status']"
+      fallback: ".status-badge, .order-state, span[class*='status']"
+    order_id:
+      primary: ".order-id, [data-testid='order-id']"
+      fallback: "a[href*='orders/'], .order-number, .order-ref"
+    order_details_link:
+      primary: "a.order-details-link, [data-testid='order-details']"
+      fallback: "a[href*='orders/'][href*='details'], .order-row a, .order-card a"
+    order_requirements:
+      primary: ".order-requirements, [data-testid='order-requirements']"
+      fallback: ".requirements-text, .buyer-requirements, .order-brief"
+
+  gig_creation:
+    title_input:
+      primary: "input#title, [data-testid='gig-title']"
+      fallback: "input[name='title'], input[placeholder*='gig title'], .gig-title-input"
+    category_select:
+      primary: "select#category, [data-testid='category-select']"
+      fallback: "select[name='category'], .category-dropdown, [class*='category'] select"
+    subcategory_select:
+      primary: "select#subcategory, [data-testid='subcategory-select']"
+      fallback: "select[name='subcategory'], .subcategory-dropdown, [class*='subcategory'] select"
+    description_editor:
+      primary: ".gig-description-editor, [data-testid='gig-description']"
+      fallback: "textarea[name='description'], .description-textarea, .ql-editor, [contenteditable='true']"
+    tags_input:
+      primary: "input.tags-input, [data-testid='tags-input']"
+      fallback: "input[placeholder*='tag'], .tag-input, input[name='tags']"
+    price_input:
+      primary: "input.price-input, [data-testid='price-input']"
+      fallback: "input[name='price'], input[type='number'][class*='price'], .package-price input"
+    delivery_days:
+      primary: "select.delivery-days, [data-testid='delivery-days']"
+      fallback: "select[name='delivery_time'], input[name='delivery_days'], .delivery-time select"
+    save_button:
+      primary: "button.save-gig, [data-testid='save-gig']"
+      fallback: "button:has-text('Save'), button[type='submit']:has-text('Save')"
+    publish_button:
+      primary: "button.publish-gig, [data-testid='publish-gig']"
+      fallback: "button:has-text('Publish'), button[type='submit']:has-text('Publish')"
+
+  delivery:
+    delivery_message_input:
+      primary: "textarea.delivery-message, [data-testid='delivery-message']"
+      fallback: "textarea[placeholder*='delivery'], .delivery-form textarea, textarea[name='message']"
+    file_upload:
+      primary: "input[type='file'].delivery-upload, [data-testid='delivery-file-upload']"
+      fallback: "input[type='file'], .upload-zone input, .file-upload-input"
+    submit_delivery:
+      primary: "button.deliver-btn, [data-testid='submit-delivery']"
+      fallback: "button:has-text('Deliver'), button[type='submit']:has-text('Deliver Now')"
+    revision_message:
+      primary: ".revision-message, [data-testid='revision-message']"
+      fallback: ".revision-request-text, .revision-details, .buyer-revision-note"
+
+  common:
+    popup_close:
+      primary: "button.popup-close, [data-testid='popup-close']"
+      fallback: "button[aria-label='Close'], .modal-close, .popup-dismiss, button.close"
+    cookie_banner_close:
+      primary: "button.cookie-accept, [data-testid='cookie-accept']"
+      fallback: "button:has-text('Accept'), .cookie-banner button, #cookie-consent button"
+    notification_dismiss:
+      primary: "button.notification-dismiss, [data-testid='dismiss-notification']"
+      fallback: ".notification-close, .alert-dismiss, .toast-close, button[aria-label='Dismiss']"

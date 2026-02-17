@@ -1,0 +1,115 @@
+gigs:
+  writing:
+    title: "I will write SEO blog posts and articles"
+    category: "Writing & Translation"
+    subcategory: "Articles & Blog Posts"
+    description: >
+      Professional SEO-optimized blog posts and articles tailored to your niche.
+      Each piece is thoroughly researched, well-structured, and written to engage
+      your target audience while incorporating your specified keywords naturally.
+      Includes proper headings, meta descriptions, and internal linking suggestions.
+      All content is original and passes plagiarism checks.
+    tags:
+      - "SEO blog post"
+      - "article writing"
+      - "content writing"
+      - "blog writer"
+      - "SEO content"
+    packages:
+      basic:
+        name: "Starter Post"
+        price: 10
+        description: "One SEO blog post up to 500 words with 1 revision"
+        word_count: 500
+        delivery_days: 2
+        revisions: 1
+      standard:
+        name: "Professional Post"
+        price: 25
+        description: "One SEO blog post up to 1000 words with 2 revisions"
+        word_count: 1000
+        delivery_days: 3
+        revisions: 2
+      premium:
+        name: "Premium Article"
+        price: 50
+        description: "One in-depth SEO article up to 2000 words with unlimited revisions"
+        word_count: 2000
+        delivery_days: 5
+        revisions: -1
+
+  coding:
+    title: "I will write Python scripts and automation tools"
+    category: "Programming & Tech"
+    subcategory: "Python"
+    description: >
+      Custom Python scripts and automation tools built to your exact specifications.
+      Clean, well-documented code following best practices with proper error handling
+      and logging. Delivered with usage instructions and requirements file. Supports
+      web scraping, data processing, API integrations, file manipulation, and more.
+    tags:
+      - "python script"
+      - "python automation"
+      - "python developer"
+      - "web scraping"
+      - "data processing"
+    packages:
+      basic:
+        name: "Simple Script"
+        price: 15
+        description: "A simple Python script for a single task with basic documentation"
+        complexity: "simple"
+        delivery_days: 2
+        revisions: 1
+      standard:
+        name: "Moderate Tool"
+        price: 40
+        description: "A moderate Python tool with multiple features and full documentation"
+        complexity: "moderate"
+        delivery_days: 4
+        revisions: 2
+      premium:
+        name: "Complex Automation"
+        price: 80
+        description: "A complex automation system with advanced features, tests, and full documentation"
+        complexity: "complex"
+        delivery_days: 7
+        revisions: -1
+
+  data_entry:
+    title: "I will do data entry and spreadsheet work"
+    category: "Data"
+    subcategory: "Data Entry"
+    description: >
+      Accurate and efficient data entry and spreadsheet services. Whether you need
+      data typed from images, PDFs transcribed into spreadsheets, databases populated,
+      or existing data cleaned and reformatted, I deliver precise results on time.
+      Supports Excel, Google Sheets, CSV, and other common formats.
+    tags:
+      - "data entry"
+      - "spreadsheet"
+      - "excel"
+      - "data processing"
+      - "virtual assistant"
+    packages:
+      basic:
+        name: "Small Dataset"
+        price: 10
+        description: "Data entry for up to 100 rows with basic formatting"
+        row_count: 100
+        delivery_days: 1
+        revisions: 1
+      standard:
+        name: "Medium Dataset"
+        price: 25
+        description: "Data entry for up to 500 rows with formatting and validation"
+        row_count: 500
+        delivery_days: 3
+        revisions: 2
+      premium:
+        name: "Large Dataset"
+        price: 50
+        description: "Data entry for up to 1000 rows with formatting, validation, and data cleaning"
+        row_count: 1000
+        delivery_days: 5
+        revisions: -1
