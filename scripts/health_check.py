@@ -93,18 +93,31 @@ class HealthCheckServer:
             request_line = await asyncio.wait_for(reader.readline(), timeout=5.0)
             request_text = request_line.decode("utf-8", errors="replace").strip()
 
-            # Parse path and query string from "GET /health?token=abc HTTP/1.1"
+            # Parse method, path, and query string from "GET /health?token=abc HTTP/1.1"
             parts = request_text.split()
+            method = parts[0] if parts else "GET"
             raw_path = parts[1] if len(parts) >= 2 else "/"
             parsed = urlparse(raw_path)
             path = parsed.path
             params = parse_qs(parsed.query)
 
-            # Drain remaining headers (we don't need them)
+            # Read headers (need Content-Length for POST bodies)
+            content_length = 0
             while True:
                 line = await asyncio.wait_for(reader.readline(), timeout=5.0)
                 if line in (b"\r\n", b"\n", b""):
                     break
+                header = line.decode("utf-8", errors="replace").strip().lower()
+                if header.startswith("content-length:"):
+                    content_length = int(header.split(":", 1)[1].strip())
+
+            # Read POST body if present
+            body_bytes = b""
+            if content_length > 0:
+                body_bytes = await asyncio.wait_for(
+                    reader.readexactly(min(content_length, 1_000_000)),
+                    timeout=10.0,
+                )
 
             # Auth check for /debug/* endpoints
             if path.startswith("/debug/") and not self._check_debug_auth(params):
@@ -135,6 +148,10 @@ class HealthCheckServer:
                 response = await self._handle_debug_dom(params)
             elif path == "/debug/selectors-probe":
                 response = await self._handle_debug_selectors_probe()
+            elif path == "/debug/cookies" and method == "GET":
+                response = await self._handle_debug_cookies_export()
+            elif path == "/debug/inject-cookies" and method == "POST":
+                response = await self._handle_debug_cookies_inject(body_bytes)
             else:
                 response = self._json_response(
                     HTTPStatus.NOT_FOUND, {"error": "not found"}
@@ -262,6 +279,110 @@ class HealthCheckServer:
             return self._json_response(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {"error": f"url check failed: {exc}"},
+            )
+
+    # ------------------------------------------------------------------
+    # Cookie management
+    # ------------------------------------------------------------------
+
+    async def _handle_debug_cookies_export(self) -> bytes:
+        """Export all browser cookies as JSON."""
+        if self._engine is None:
+            return self._json_response(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "browser engine not available"},
+            )
+        try:
+            context = self._engine._context
+            if context is None:
+                return self._json_response(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "browser context not available"},
+                )
+            cookies = await context.cookies()
+            return self._json_response(HTTPStatus.OK, {
+                "count": len(cookies),
+                "cookies": cookies,
+            })
+        except Exception as exc:
+            return self._json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": f"cookie export failed: {exc}"},
+            )
+
+    async def _handle_debug_cookies_inject(self, body: bytes) -> bytes:
+        """Inject cookies into the browser context from JSON POST body.
+
+        Expected body: JSON array of cookie objects with at minimum:
+        ``name``, ``value``, ``domain``. Optional: ``path``, ``httpOnly``,
+        ``secure``, ``sameSite``, ``expires``.
+        """
+        if self._engine is None:
+            return self._json_response(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "browser engine not available"},
+            )
+        try:
+            context = self._engine._context
+            if context is None:
+                return self._json_response(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "browser context not available"},
+                )
+
+            cookies_data = json.loads(body.decode("utf-8"))
+
+            # Accept either a raw array or {"cookies": [...]}
+            if isinstance(cookies_data, dict) and "cookies" in cookies_data:
+                cookies_list = cookies_data["cookies"]
+            elif isinstance(cookies_data, list):
+                cookies_list = cookies_data
+            else:
+                return self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "body must be a JSON array of cookies or {\"cookies\": [...]}"},
+                )
+
+            # Normalize cookies for Playwright
+            normalized = []
+            for c in cookies_list:
+                cookie: dict[str, Any] = {
+                    "name": c["name"],
+                    "value": c["value"],
+                    "domain": c.get("domain", ".fiverr.com"),
+                    "path": c.get("path", "/"),
+                }
+                if "expires" in c and c["expires"]:
+                    cookie["expires"] = float(c["expires"])
+                if "httpOnly" in c:
+                    cookie["httpOnly"] = bool(c["httpOnly"])
+                if "secure" in c:
+                    cookie["secure"] = bool(c["secure"])
+                if "sameSite" in c:
+                    cookie["sameSite"] = c["sameSite"]
+                normalized.append(cookie)
+
+            await context.add_cookies(normalized)
+
+            # Navigate to Fiverr to activate the cookies
+            page = await self._engine.get_page()
+            await page.goto("https://www.fiverr.com/", wait_until="domcontentloaded")
+            await asyncio.sleep(3.0)
+
+            return self._json_response(HTTPStatus.OK, {
+                "injected": len(normalized),
+                "url_after": page.url,
+                "title_after": await page.title(),
+            })
+        except json.JSONDecodeError as exc:
+            return self._json_response(
+                HTTPStatus.BAD_REQUEST,
+                {"error": f"invalid JSON body: {exc}"},
+            )
+        except Exception as exc:
+            return self._json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": f"cookie injection failed: {exc}"},
             )
 
     # ------------------------------------------------------------------
