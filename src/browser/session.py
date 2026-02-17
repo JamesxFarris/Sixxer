@@ -124,6 +124,15 @@ class SessionManager:
         if await self.is_logged_in():
             return
 
+        # After is_logged_in() navigated, PX may now be visible.
+        # Raise immediately rather than wasting time on a login attempt.
+        if await self._detect_perimeterx():
+            log.warning("ensure_session_perimeterx_after_nav")
+            raise PerimeterXBlockedError(
+                "PerimeterX bot detection is blocking access. "
+                "Use /debug/solve-px or /debug/screenshot to resolve."
+            )
+
         log.info("session_expired_relogging")
         success = await self.login()
         if not success:

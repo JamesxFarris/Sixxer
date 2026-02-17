@@ -28,7 +28,7 @@ from src.ai.communicator import BuyerCommunicator
 from src.ai.prompts import PromptManager
 from src.browser.engine import BrowserEngine
 from src.browser.selectors import SelectorStore
-from src.browser.session import PerimeterXBlockedError, SessionManager
+from src.browser.session import SessionManager
 from src.fiverr.inbox import InboxManager
 from src.fiverr.navigation import Navigator
 from src.fiverr.order_actions import OrderActions
@@ -82,15 +82,20 @@ async def main(headless: bool = False) -> None:
     selectors = SelectorStore(str(_PROJECT_ROOT / "config" / "selectors.yaml"))
     session = SessionManager(engine, settings.fiverr_username, settings.fiverr_password)
 
-    # Try to ensure session, but don't crash on PerimeterX — the scheduler
-    # will handle it with pause-and-retry once it starts.
-    try:
-        await session.ensure_session()
-    except PerimeterXBlockedError:
-        log.warning(
-            "sixxer.perimeterx_at_startup",
-            message="PerimeterX detected at startup. Use /debug/solve-px to resolve.",
-        )
+    # NOTE: We do NOT call ensure_session() here. The scheduler's first cycle
+    # handles it, and if PerimeterX blocks, the scheduler enters pause-and-retry
+    # mode while the health server stays reachable for /debug/solve-px.
+
+    # ---- Health check server (start EARLY so Railway sees /health) --------
+    health_server = HealthCheckServer(
+        port=settings.port,
+        db=db,
+        engine=engine,
+        selectors=selectors,
+        debug_token=settings.debug_token or None,
+    )
+    await health_server.start()
+    log.info("sixxer.health_check_started", port=settings.port)
 
     # ---- Navigation & Fiverr ops -----------------------------------------
     navigator = Navigator(engine, selectors)
@@ -147,17 +152,8 @@ async def main(headless: bool = False) -> None:
         poll_max=settings.poll_interval_max,
     )
 
-    # ---- Health check server ---------------------------------------------
-    health_server = HealthCheckServer(
-        port=settings.port,
-        scheduler=scheduler,
-        db=db,
-        engine=engine,
-        selectors=selectors,
-        debug_token=settings.debug_token or None,
-    )
-    await health_server.start()
-    log.info("sixxer.health_check_started", port=settings.port)
+    # Wire scheduler into health server (it was started early, before scheduler existed)
+    health_server._scheduler = scheduler
 
     # ---- Signal handling -------------------------------------------------
     def handle_shutdown(sig: int, frame: object) -> None:
