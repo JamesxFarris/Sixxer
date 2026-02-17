@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
 
 # Install Firefox system dependencies + Xvfb for virtual display
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -54,5 +55,8 @@ RUN pip install --no-cache-dir .
 # Create data directories (will be overlaid by Railway volume)
 RUN mkdir -p /app/data/browser_data /app/data/deliverables /app/data/logs
 
-# Run through Xvfb so the browser is truly "headed" (defeats headless detection)
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1920x1080x24", "python", "main.py"]
+# Start Xvfb in background, then run the app
+CMD Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp &\
+    sleep 1 && \
+    export DISPLAY=:99 && \
+    python main.py
